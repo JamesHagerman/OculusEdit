@@ -84,7 +84,8 @@ ovrVector3f g_CameraPosition;
 // The OpenGL Shader Program variables:
 GLuint theProgram; // The program itself
 GLuint positionBufferObject; // The position buffer object
-GLuint offsetLocation;
+GLuint elapsedTimeUniform;
+GLuint loopDuration; // We will set this only once when the program is finished linking
 GLuint vao; // the vertex array
 
 // The shaders themselves:
@@ -93,10 +94,13 @@ const std::string strVertexShader(
 	"layout (location = 0) in vec4 position;\n"
 	"layout (location = 1) in vec4 color;\n"
 	"smooth out vec4 theColor;\n"
-	"uniform vec2 offset;\n"
+	"uniform float loopDuration;\n"
+	"uniform float time;\n"
 	"void main()\n"
 	"{\n"
-	"   vec4 totalOffset = vec4(offset.x, offset.y, 0.0, 0.0);\n"
+	"   float timeScale = 3.14159f * 2.0f / loopDuration;\n"
+	"   float currTime = mod(time, loopDuration);\n"
+	"   vec4 totalOffset = vec4(cos(currTime * timeScale) * 0.5f, sin(currTime *timeScale) * 0.5f, 0.0, 0.0);\n"
 	"   gl_Position = position + totalOffset;\n"
 	"   theColor = color;\n"
 	"}\n"
@@ -186,6 +190,8 @@ void InitializeProgram()
 	theProgram = CreateProgram(shaderList);
 
 	std::for_each(shaderList.begin(), shaderList.end(), glDeleteShader);
+
+	
 }
 
 // Vertex array for use with shader program:
@@ -668,23 +674,34 @@ int main(int argc, const char * argv[]) {
 	InitializeVertexBuffer();
 
 
-	// Initialize the vertex attribute arrays so that we don't have to map every attribute for every
-	// vertex array we want to render:
+	// Initialize the vertex attribute array
+	// All of the settings we configure for the shader program will be stored in the Vertex attribute array object
+	// so that we won't have to bind all of this crap for every new object we want to render:
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
 	// Get the memory location of the offset uniform. Do NOT set "default uniform values" here. It breaks things.
-	offsetLocation = glGetUniformLocation(theProgram, "offset");
-	//
+	// I think this could be moved into InitializeProgram()... but I'm not sure how to organize all of this quite 
+	// yet due to the use of the VAO. It could probably be moved anywhere after the program is linked, and before
+	// any rendering is done.
+	elapsedTimeUniform = glGetUniformLocation(theProgram, "time");
+	GLuint loopDurationUnf = glGetUniformLocation(theProgram, "loopDuration");
+	glUseProgram(theProgram);
+	glUniform1f(loopDurationUnf, 5.0f);
+	glUseProgram(0);
 
+	// Bind our objects vertex buffer to opengl:
+	// (I'm not sure why we have to bind this if we're using VAO's but maybe I'll see why later...?)
 	glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
+	// Tell OpenGL to use the first two shader attibutes:
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
+	// Tell OpenGL where in the vertex buffer to get the data for each attribute:
 	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
 	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)48);
 
 
-	// Unbind...
+	// Unbind all of that and get on with it...
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -852,13 +869,10 @@ int main(int argc, const char * argv[]) {
 
 			// Use shader program to render instead:
 
-			// Calculate new offset position for the shader's uniform input:
-			const float fLoopDuration = 5.0f;
-			const float fScale = 3.14159f * 2.0f / fLoopDuration;
 			glUseProgram(theProgram);
 			glBindVertexArray(vao);
 
-			glUniform2f(offsetLocation, cosf(glfwGetTime()*fScale)*0.5f, sinf(glfwGetTime()*fScale)*0.5f);
+			glUniform1f(elapsedTimeUniform, (float)glfwGetTime());
 
 			//glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
 			//glEnableVertexAttribArray(0);
