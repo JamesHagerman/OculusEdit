@@ -89,19 +89,24 @@ GLuint vao; // the vertex array
 // The shaders themselves:
 const std::string strVertexShader(
 	"#version 330\n"
-	"layout(location = 0) in vec4 position;\n"
+	"layout (location = 0) in vec4 position;\n"
+	"layout (location = 1) in vec4 color;\n"
+	"smooth out vec4 theColor;\n"
 	"void main()\n"
 	"{\n"
 	"   gl_Position = position;\n"
+	"   theColor = color;\n"
 	"}\n"
 	);
 
 const std::string strFragmentShader(
 	"#version 330\n"
+	"smooth in vec4 theColor;\n"
 	"out vec4 outputColor;\n"
 	"void main()\n"
 	"{\n"
-	"   outputColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);\n"
+	//"//   outputColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);\n"
+	"   outputColor = theColor;\n"
 	"}\n"
 	);
 
@@ -131,7 +136,7 @@ GLuint CreateShader(GLenum eShaderType, const std::string &strShaderFile)
 		case GL_GEOMETRY_SHADER: strShaderType = "geometry"; break;
 		case GL_FRAGMENT_SHADER: strShaderType = "fragment"; break;
 		}
-
+		printf("JDB: oops! shader compile issue...\n");
 		fprintf(stderr, "Compile failure in %s shader:\n%s\n", strShaderType, strInfoLog);
 		delete[] strInfoLog;
 	}
@@ -157,6 +162,7 @@ GLuint CreateProgram(const std::vector<GLuint> &shaderList)
 
 		GLchar *strInfoLog = new GLchar[infoLogLength + 1];
 		glGetProgramInfoLog(program, infoLogLength, NULL, strInfoLog);
+		printf("JDB: oops! shader program linker issue\n");
 		fprintf(stderr, "Linker failure: %s\n", strInfoLog);
 		delete[] strInfoLog;
 	}
@@ -181,9 +187,12 @@ void InitializeProgram()
 
 // Vertex array for use with shader program:
 const float vertexPositions[] = {
-	0.75f, 0.75f, 0.0f, 1.0f,
-	0.75f, -0.75f, 0.0f, 1.0f,
-	-0.75f, -0.75f, 0.0f, 1.0f,
+	0.75f, 0.75f, 0.0f, 1.0f, 
+	0.75f, -0.75f, 0.0f, 1.0f, 
+	-0.75f, -0.75f, 0.0f, 1.0f, 
+	1.0f, 0.0f, 0.0f, 1.0f,
+	0.0f, 1.0f, 0.0f, 1.0f,
+	0.0f, 0.0f, 1.0f, 1.0f
 };
 
 // Old OpenGL Scene object:
@@ -663,7 +672,9 @@ int main(int argc, const char * argv[]) {
 
 	glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
 	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)48);
 
 
 	// Unbind...
