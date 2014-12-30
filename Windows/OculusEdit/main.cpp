@@ -84,6 +84,7 @@ ovrVector3f g_CameraPosition;
 // The OpenGL Shader Program variables:
 GLuint theProgram; // The program itself
 GLuint positionBufferObject; // The position buffer object
+GLuint offsetLocation;
 GLuint vao; // the vertex array
 
 // The shaders themselves:
@@ -92,9 +93,11 @@ const std::string strVertexShader(
 	"layout (location = 0) in vec4 position;\n"
 	"layout (location = 1) in vec4 color;\n"
 	"smooth out vec4 theColor;\n"
+	"uniform vec2 offset;\n"
 	"void main()\n"
 	"{\n"
-	"   gl_Position = position;\n"
+	"   vec4 totalOffset = vec4(offset.x, offset.y, 0.0, 0.0);\n"
+	"   gl_Position = position + totalOffset;\n"
 	"   theColor = color;\n"
 	"}\n"
 	);
@@ -670,6 +673,10 @@ int main(int argc, const char * argv[]) {
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
+	// Get the memory location of the offset uniform. Do NOT set "default uniform values" here. It breaks things.
+	offsetLocation = glGetUniformLocation(theProgram, "offset");
+	//
+
 	glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
@@ -841,12 +848,17 @@ int main(int argc, const char * argv[]) {
 
 			// Use old render functions to draw a cube...
 			// RenderCubeFixedFunction();
-			RenderCubeVertexArrays();
+			//RenderCubeVertexArrays();
 
 			// Use shader program to render instead:
-			glUseProgram(theProgram);
 
+			// Calculate new offset position for the shader's uniform input:
+			const float fLoopDuration = 5.0f;
+			const float fScale = 3.14159f * 2.0f / fLoopDuration;
+			glUseProgram(theProgram);
 			glBindVertexArray(vao);
+
+			glUniform2f(offsetLocation, cosf(glfwGetTime()*fScale)*0.5f, sinf(glfwGetTime()*fScale)*0.5f);
 
 			//glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
 			//glEnableVertexAttribArray(0);
